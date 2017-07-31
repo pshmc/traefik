@@ -1,12 +1,9 @@
 package integration
 
 import (
-	"errors"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"os"
-	"strings"
 	"time"
 
 	"github.com/containous/traefik/integration/try"
@@ -47,41 +44,22 @@ func (s *MarathonSuite) getContainerIPAddr(c *check.C, name string) string {
 // host/IP address mapping if we are running inside a container.
 func (s *MarathonSuite) extendDockerHostsFile(host, ipAddr string) error {
 	const hostsFile = "/etc/hosts"
-	const cgroupFile = "/proc/1/cgroup"
 
-	// Determine if the run inside a container. This is the case if the cgroup
-	// file has at least one record not ending in a slash.
-	// (from https://stackoverflow.com/a/20012536)
-	content, err := ioutil.ReadFile(cgroupFile)
-	switch {
-	case os.IsNotExist(err):
-		return nil
-	case err != nil:
-		return err
-	}
+	// Determine if the run inside a container. The most reliable way to
+	// do this is to inject an indicator, which we do in terms of an
+	// environment variable.
+	// (See also https://groups.google.com/d/topic/docker-user/JOGE7AnJ3Gw/discussion.)
 
-	lines := strings.Split(string(content), "\n")
-	if len(lines) == 0 {
-		return errors.New("/etc/hosts is empty")
-	}
-
-	for _, line := range lines {
-		if line == "" {
-			return errors.New("encountered empty line")
+	if os.Getenv("CONTAINER") == "DOCKER" {
+		// We are running inside a container -- extend the hosts file.
+		file, err := os.OpenFile(hostsFile, os.O_APPEND|os.O_WRONLY, 0600)
+		if err != nil {
+			return err
 		}
+		defer file.Close()
 
-		if !strings.HasSuffix(line, "/") {
-			// We are running inside a container -- extend the hosts file.
-			file, err := os.OpenFile(hostsFile, os.O_APPEND|os.O_WRONLY, 0600)
-			if err != nil {
-				return err
-			}
-			defer file.Close()
-
-			if _, err = file.WriteString(fmt.Sprintf("%s\t%s\n", ipAddr, host)); err != nil {
-				return err
-			}
-			break
+		if _, err = file.WriteString(fmt.Sprintf("%s\t%s\n", ipAddr, host)); err != nil {
+			return err
 		}
 	}
 
