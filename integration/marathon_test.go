@@ -80,7 +80,6 @@ func (s *MarathonSuite) TestSimpleConfiguration(c *check.C) {
 
 func (s *MarathonSuite) TestConfigurationUpdate(c *check.C) {
 	marathonURL := "http://" + s.getContainerIPAddr(c, containerNameMarathon) + ":8080"
-	fmt.Printf("Using Marathon URL %s\n", marathonURL)
 
 	// Wait for Marathon readiness prior to creating the client so that we
 	// don't run into the "all cluster members down" state right from the
