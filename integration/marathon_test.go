@@ -84,7 +84,6 @@ func (s *MarathonSuite) TestConfigurationUpdate(c *check.C) {
 	// Wait for Marathon readiness prior to creating the client so that we
 	// don't run into the "all cluster members down" state right from the
 	// start.
-	fmt.Println("Waiting for Marathon to become ready")
 	err := try.GetRequest(marathonURL+"/ping", 1*time.Minute, try.StatusCodeIs(http.StatusOK))
 	c.Assert(err, checker.IsNil)
 
@@ -110,7 +109,7 @@ func (s *MarathonSuite) TestConfigurationUpdate(c *check.C) {
 		}
 	}()
 
-	// Deploy test application via Marathon.
+	// Create test application to be deployed.
 	app := marathon.NewDockerApplication().
 		Name("/whoami").
 		CPU(0.1).
@@ -120,13 +119,13 @@ func (s *MarathonSuite) TestConfigurationUpdate(c *check.C) {
 		Expose(80).
 		Container("emilevauge/whoami")
 
-	fmt.Println("Deploying test application")
+	// Deploy the test application.
 	deploy, err := client.UpdateApplication(app, false)
 	c.Assert(err, checker.IsNil)
-	fmt.Println("Waiting for Deployment to complete")
+	// Wait for deployment to complete.
 	c.Assert(client.WaitOnDeployment(deploy.DeploymentID, 2*time.Minute), checker.IsNil)
 
-	fmt.Println("Querying application via Traefik")
+	// Query application via Traefik.
 	err = try.GetRequest("http://127.0.0.1:8000/service", 1*time.Minute, try.StatusCodeIs(http.StatusOK))
 	c.Assert(err, checker.IsNil)
 	showTraefikLog = false
