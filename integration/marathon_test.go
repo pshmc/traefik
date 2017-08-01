@@ -87,6 +87,7 @@ func (s *MarathonSuite) TestConfigurationUpdate(c *check.C) {
 	err := try.GetRequest(marathonURL+"/ping", 1*time.Minute, try.StatusCodeIs(http.StatusOK))
 	c.Assert(err, checker.IsNil)
 
+	// Start Traefik.
 	file := s.adaptFile(c, "fixtures/marathon/simple.toml", struct {
 		MarathonURL string
 	}{marathonURL})
@@ -95,6 +96,10 @@ func (s *MarathonSuite) TestConfigurationUpdate(c *check.C) {
 	err = cmd.Start()
 	c.Assert(err, checker.IsNil)
 	defer cmd.Process.Kill()
+
+	// Wait for Traefik to turn ready.
+	err = try.GetRequest("http://127.0.0.1:8000/", 2*time.Second, try.StatusCodeIs(http.StatusNotFound))
+	c.Assert(err, checker.IsNil)
 
 	// Prepare Marathon client.
 	config := marathon.NewDefaultConfig()
