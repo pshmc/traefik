@@ -19,11 +19,23 @@ const (
 )
 
 // Marathon test suites (using libcompose)
-type MarathonSuite struct{ BaseSuite }
+type MarathonSuite struct {
+	BaseSuite
+	marathonURL string
+}
 
 func (s *MarathonSuite) SetUpSuite(c *check.C) {
 	s.createComposeProject(c, "marathon")
 	s.composeProject.Start(c)
+
+	s.marathonURL = "http://" + s.getContainerIPAddr(c, containerNameMarathon) + ":8080"
+
+	// Wait for Marathon readiness prior to creating the client so that we
+	// don't run into the "all cluster members down" state right from the
+	// start.
+	err := try.GetRequest(s.marathonURL+"/v2/leader", 1*time.Minute, try.StatusCodeIs(http.StatusOK))
+	c.Assert(err, checker.IsNil)
+
 	// Add entry for Mesos slave container IP address in the hosts file so
 	// that Traefik can properly forward traffic.
 	// This is necessary as long as we are still using the docker-compose v1
@@ -79,21 +91,13 @@ func (s *MarathonSuite) TestSimpleConfiguration(c *check.C) {
 }
 
 func (s *MarathonSuite) TestConfigurationUpdate(c *check.C) {
-	marathonURL := "http://" + s.getContainerIPAddr(c, containerNameMarathon) + ":8080"
-
-	// Wait for Marathon readiness prior to creating the client so that we
-	// don't run into the "all cluster members down" state right from the
-	// start.
-	err := try.GetRequest(marathonURL+"/ping", 1*time.Minute, try.StatusCodeIs(http.StatusOK))
-	c.Assert(err, checker.IsNil)
-
 	// Start Traefik.
 	file := s.adaptFile(c, "fixtures/marathon/simple.toml", struct {
 		MarathonURL string
-	}{marathonURL})
+	}{s.marathonURL})
 	defer os.Remove(file)
 	cmd, output := s.cmdTraefik(withConfigFile(file))
-	err = cmd.Start()
+	err := cmd.Start()
 	c.Assert(err, checker.IsNil)
 	defer cmd.Process.Kill()
 
@@ -103,7 +107,7 @@ func (s *MarathonSuite) TestConfigurationUpdate(c *check.C) {
 
 	// Prepare Marathon client.
 	config := marathon.NewDefaultConfig()
-	config.URL = marathonURL
+	config.URL = s.marathonURL
 	client, err := marathon.NewClient(config)
 	c.Assert(err, checker.IsNil)
 
