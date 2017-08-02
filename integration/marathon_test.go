@@ -111,6 +111,9 @@ func (s *MarathonSuite) TestConfigurationUpdate(c *check.C) {
 	client, err := marathon.NewClient(config)
 	c.Assert(err, checker.IsNil)
 
+	// Show the Traefik log if any assertion fails. If the entire test runs
+	// to a successful completion, we flip the flag at the very end and don't
+	// display anything.
 	showTraefikLog := true
 	defer func() {
 		if showTraefikLog {
