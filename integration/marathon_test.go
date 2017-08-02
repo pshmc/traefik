@@ -61,7 +61,6 @@ func (s *MarathonSuite) extendDockerHostsFile(host, ipAddr string) error {
 	// do this is to inject an indicator, which we do in terms of an
 	// environment variable.
 	// (See also https://groups.google.com/d/topic/docker-user/JOGE7AnJ3Gw/discussion.)
-
 	if os.Getenv("CONTAINER") == "DOCKER" {
 		// We are running inside a container -- extend the hosts file.
 		file, err := os.OpenFile(hostsFile, os.O_APPEND|os.O_WRONLY, 0600)
@@ -76,18 +75,6 @@ func (s *MarathonSuite) extendDockerHostsFile(host, ipAddr string) error {
 	}
 
 	return nil
-}
-
-func (s *MarathonSuite) TestSimpleConfiguration(c *check.C) {
-	cmd, _ := s.cmdTraefik(withConfigFile("fixtures/marathon/simple.toml"))
-	err := cmd.Start()
-	c.Assert(err, checker.IsNil)
-	defer cmd.Process.Kill()
-
-	// TODO validate : run on 80
-	// Expected a 404 as we did not configure anything
-	err = try.GetRequest("http://127.0.0.1:8000/", 500*time.Millisecond, try.StatusCodeIs(http.StatusNotFound))
-	c.Assert(err, checker.IsNil)
 }
 
 func (s *MarathonSuite) TestConfigurationUpdate(c *check.C) {
